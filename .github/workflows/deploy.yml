@@ -42,8 +42,12 @@ jobs:
   deploy:
     # Run on Ubuntu virtual machine (free tier)
     runs-on: ubuntu-latest
-    
-    # Only deploy on push to main (not on PRs)
+        # Set working directory for all steps
+    # Since package.json is in backend/, we run everything there
+    defaults:
+      run:
+        working-directory: backend
+        # Only deploy on push to main (not on PRs)
     # PRs will run tests but not deploy
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     
@@ -70,7 +74,8 @@ jobs:
           node-version: '24'
           # ^ Match your Lambda runtime version
           cache: 'npm'
-          # ^ Cache npm packages for faster builds
+          cache-dependency-path: backend/package-lock.json
+          # ^ Tell npm cache where to find package-lock.json
       
       # ─────────────────────────────────────────────────
       # STEP 3: Install dependencies
@@ -139,6 +144,11 @@ jobs:
     # Only run on pull requests
     if: github.event_name == 'pull_request'
     
+    # Set working directory for all steps
+    defaults:
+      run:
+        working-directory: backend
+    
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
@@ -148,6 +158,7 @@ jobs:
         with:
           node-version: '24'
           cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
       
       - name: 📦 Install dependencies
         run: npm ci
