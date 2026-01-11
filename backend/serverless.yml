@@ -1,0 +1,104 @@
+# ============================================
+# SERVERLESS FRAMEWORK CONFIGURATION
+# ============================================
+# This file tells Serverless Framework how to deploy
+# your Express app to AWS Lambda + API Gateway
+# ============================================
+
+service: microservice-api
+# ^ Name of your service in AWS (shows in Lambda console)
+
+provider:
+  name: aws
+  # ^ Cloud provider (aws, azure, google)
+  
+  runtime: nodejs24.x
+  # ^ Node.js version Lambda will use
+  
+  region: us-east-1
+  # ^ AWS region (same as your S3 bucket and Secrets Manager)
+  
+  stage: ${opt:stage, 'dev'}
+  # ^ Environment: dev, staging, prod
+  # Uses command line --stage flag, defaults to 'dev'
+  
+  deploymentBucket:
+    name: microservice-files-dev2651998
+    # ^ Use existing S3 bucket for deployment artifacts
+  
+  memorySize: 512
+  # ^ RAM in MB (128-10240). More memory = faster CPU too
+  
+  timeout: 29
+  # ^ Max execution time in seconds (API Gateway limit: 29s)
+  # Changed from 30 to 29 to match API Gateway's timeout
+  
+  environment:
+    # Environment variables available in Lambda
+    NODE_ENV: ${self:provider.stage}
+    AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
+    # ^ Reuse HTTP connections (faster AWS SDK calls)
+    AWS_SECRET_NAME: microservice/secrets
+    # ^ Secret name in AWS Secrets Manager
+    USE_AWS_SECRETS: true
+    # ^ Enable fetching secrets from AWS
+    
+  iam:
+    role:
+      statements:
+        # Allow Lambda to read from Secrets Manager
+        - Effect: Allow
+          Action:
+            - secretsmanager:GetSecretValue
+          Resource: "arn:aws:secretsmanager:${self:provider.region}:*:secret:microservice/*"
+        
+        # Allow Lambda to access S3 bucket
+        - Effect: Allow
+          Action:
+            - s3:PutObject
+            - s3:GetObject
+            - s3:DeleteObject
+          Resource: "arn:aws:s3:::microservice-files-dev2651998/*"
+        
+        # Allow Lambda to list S3 bucket (for scheduled cleanup task)
+        - Effect: Allow
+          Action:
+            - s3:ListBucket
+          Resource: "arn:aws:s3:::microservice-files-dev2651998"
+
+functions:
+  api:
+    # Function name: microservice-api-dev-api
+    handler: lambda.handler
+    # ^ Points to: exports.handler in lambda.js
+    
+    events:
+      # API Gateway triggers
+      - http:
+          path: /
+          method: ANY
+          # ^ Handle ANY method (GET, POST, etc.) at root path
+          cors: true
+          # ^ Enable CORS headers
+      
+      - http:
+          path: /{proxy+}
+          method: ANY
+          cors: true
+          # ^ Handle ANY method at ANY path
+          # {proxy+} is a greedy path variable
+          # Matches: /api/items, /api/items/123, /health, etc.
+
+plugins:
+  - serverless-offline
+  # ^ Optional: Test Lambda locally (we'll add this later)
+
+package:
+  patterns:
+    # Files to INCLUDE in deployment
+    - "!node_modules/.cache/**"
+    # Files to EXCLUDE (saves deployment size)
+    - "!.git/**"
+    - "!.env"
+    - "!*.md"
+    - "!test/**"
