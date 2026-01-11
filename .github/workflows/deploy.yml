@@ -1,0 +1,157 @@
+# ============================================
+# GITHUB ACTIONS WORKFLOW: Deploy Backend
+# ============================================
+# This file tells GitHub Actions WHEN and HOW to deploy your Lambda.
+# Location: .github/workflows/deploy.yml
+# ============================================
+
+# ─────────────────────────────────────────────────────────
+# WORKFLOW NAME
+# ─────────────────────────────────────────────────────────
+# This name appears in GitHub's Actions tab
+name: Deploy Backend to AWS Lambda
+
+# ─────────────────────────────────────────────────────────
+# TRIGGERS: When should this workflow run?
+# ─────────────────────────────────────────────────────────
+on:
+  # Trigger on push to main branch
+  push:
+    branches:
+      - main
+    # Optional: Only run if these files changed
+    # paths:
+    #   - '**.js'
+    #   - 'package.json'
+    #   - 'serverless.yml'
+  
+  # Trigger on pull request to main (for testing)
+  pull_request:
+    branches:
+      - main
+  
+  # Allow manual trigger from GitHub UI
+  # (Click "Run workflow" button in Actions tab)
+  workflow_dispatch:
+
+# ─────────────────────────────────────────────────────────
+# JOBS: What should run?
+# ─────────────────────────────────────────────────────────
+jobs:
+  # Job name: "deploy"
+  deploy:
+    # Run on Ubuntu virtual machine (free tier)
+    runs-on: ubuntu-latest
+    
+    # Only deploy on push to main (not on PRs)
+    # PRs will run tests but not deploy
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    
+    # ─────────────────────────────────────────────────────
+    # STEPS: Individual commands to run
+    # ─────────────────────────────────────────────────────
+    steps:
+      # ─────────────────────────────────────────────────
+      # STEP 1: Checkout code
+      # ─────────────────────────────────────────────────
+      # Downloads your repo code to the virtual machine
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        # "uses" means we're using a pre-built action
+        # actions/checkout is an official GitHub action
+      
+      # ─────────────────────────────────────────────────
+      # STEP 2: Setup Node.js
+      # ─────────────────────────────────────────────────
+      # Installs Node.js on the virtual machine
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          # ^ Match your Lambda runtime version
+          cache: 'npm'
+          # ^ Cache npm packages for faster builds
+      
+      # ─────────────────────────────────────────────────
+      # STEP 3: Install dependencies
+      # ─────────────────────────────────────────────────
+      - name: 📦 Install dependencies
+        run: npm ci
+        # "npm ci" is like "npm install" but:
+        # - Faster (skips some checks)
+        # - Stricter (uses exact versions from package-lock.json)
+        # - Preferred for CI/CD
+      
+      # ─────────────────────────────────────────────────
+      # STEP 4: Run tests (if you have them)
+      # ─────────────────────────────────────────────────
+      # Uncomment this when you add tests in the future
+      # - name: 🧪 Run tests
+      #   run: npm test
+      
+      # ─────────────────────────────────────────────────
+      # STEP 5: Configure AWS credentials
+      # ─────────────────────────────────────────────────
+      # Sets up AWS CLI with credentials from GitHub Secrets
+      - name: 🔐 Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+          # ^ Must match your serverless.yml region
+          # 
+          # IMPORTANT: secrets.AWS_ACCESS_KEY_ID comes from
+          # GitHub repo Settings → Secrets → Actions
+          # We'll set this up after creating this file!
+      
+      # ─────────────────────────────────────────────────
+      # STEP 6: Install Serverless Framework
+      # ─────────────────────────────────────────────────
+      - name: 📦 Install Serverless Framework
+        run: npm install -g serverless
+        # Installs serverless CLI globally on the VM
+      
+      # ─────────────────────────────────────────────────
+      # STEP 7: Deploy to AWS Lambda
+      # ─────────────────────────────────────────────────
+      - name: 🚀 Deploy to AWS Lambda
+        run: serverless deploy --stage dev
+        # This is the same command you run locally!
+        # --stage dev ensures we deploy to dev environment
+        env:
+          # Pass Serverless license key if needed (v4)
+          SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
+      
+      # ─────────────────────────────────────────────────
+      # STEP 8: Print deployment info
+      # ─────────────────────────────────────────────────
+      - name: 📋 Deployment complete
+        run: |
+          echo "✅ Deployment successful!"
+          echo "🔗 API URL: https://py9ay9fd4c.execute-api.us-east-1.amazonaws.com/dev"
+
+  # ─────────────────────────────────────────────────────
+  # JOB 2: Test (runs on Pull Requests)
+  # ─────────────────────────────────────────────────────
+  test:
+    runs-on: ubuntu-latest
+    # Only run on pull requests
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+      
+      - name: 📦 Install dependencies
+        run: npm ci
+      
+      # Add tests here when you have them
+      - name: ✅ Lint check (placeholder)
+        run: echo "No tests yet - add npm test when ready"
