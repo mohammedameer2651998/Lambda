@@ -114,8 +114,9 @@ jobs:
       # STEP 6: Install Serverless Framework
       # ─────────────────────────────────────────────────
       - name: 📦 Install Serverless Framework
-        run: npm install -g serverless
-        # Installs serverless CLI globally on the VM
+        run: npm install -g serverless@3
+        # Install Serverless v3 (v4 requires license key)
+        # v3 is still widely used and doesn't need auth
       
       # ─────────────────────────────────────────────────
       # STEP 7: Deploy to AWS Lambda
@@ -124,9 +125,6 @@ jobs:
         run: serverless deploy --stage dev
         # This is the same command you run locally!
         # --stage dev ensures we deploy to dev environment
-        env:
-          # Pass Serverless license key if needed (v4)
-          SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
       
       # ─────────────────────────────────────────────────
       # STEP 8: Print deployment info
