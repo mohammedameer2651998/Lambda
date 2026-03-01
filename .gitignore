@@ -2,7 +2,14 @@ node_modules/
 build/
 .env
 .DS_Store
-node_modules/
-build/
-.env
-.DS_Store
+*.json
+!package.json
+!package-lock.json
+
+# Credentials
+mongodb_creds.txt
+*.pem
+*.key
+
+# Serverless
+.serverless/

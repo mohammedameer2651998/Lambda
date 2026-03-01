@@ -8,9 +8,15 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 
-// Import database connection and model
+// Import database connection and models
 const { connectDB } = require('./config/database');
 const { Item } = require('./models/Items');
+const { Category } = require('./models/Category');
+const { User } = require('./models/User');
+
+// Import routes (Day 11)
+const categoryRoutes = require('./routes/categories');
+const userRoutes = require('./routes/users');
 
 // Import file upload middleware and S3 service
 const { upload } = require('./middleware/upload');
@@ -27,6 +33,12 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
+
+// ============================================
+// MOUNT ROUTE MODULES (Day 11)
+// ============================================
+app.use('/api/categories', categoryRoutes);
+app.use('/api/users', userRoutes);
 
 // ============================================
 // ROUTES
